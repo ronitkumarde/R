@@ -1,0 +1,506 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(lubridate)
+library(tidyr)
+library(reshape2) # Used to melt correlation matrix
+library(data.table)
+```
+
+```{r}
+file.path <- "/Users/anandkumarpola/Documents/G3/RUTGERS/Stat581/Project/fires.csv"
+```
+
+```{r}
+fire_data.df <- read.csv(file.path)
+```
+
+```{r}
+head(fire_data.df)
+```
+
+```{r}
+tail(fire_data.df)
+```
+
+```{r}
+summary(fire_data.df)
+```
+
+```{r}
+print(paste("Data Available from ", range(fire_data.df$FIRE_YEAR, na.rm = TRUE)[1], " to ", range(fire_data.df$FIRE_YEAR, na.rm = TRUE)[2]))
+print(paste("That's ", range(fire_data.df$FIRE_YEAR, na.rm = TRUE)[2] - range(fire_data.df$FIRE_YEAR, na.rm = TRUE)[1], " years."))
+```
+Explore Dates
+```{r}
+print("Head")
+head(fire_data.df$DISCOVERY_DATE)
+
+print("Tail")
+tail(fire_data.df$DISCOVERY_DATE)
+
+print("Summary")
+summary(fire_data.df$DISCOVERY_DATE)
+
+"These are Julian dates. We need dates on a Gregorian calendar."
+```
+
+Preprocessing
+Convert Dates to Gregorian Dates
+```{r}
+julian_origin <- ymd("0000-11-23") - years(4713)
+Gregorian_dates <- as.Date(fire_data.df$DISCOVERY_DATE, origin = julian_origin)
+head(Gregorian_dates)
+tail(Gregorian_dates)
+```
+
+```{r}
+fire_data.df$DISCOVERY_DATE <- Gregorian_dates
+```
+
+```{r}
+tail(fire_data.df$LATITUDE)
+```
+```{r}
+tail(fire_data.df$LONGITUDE)
+```
+
+```{r}
+tail(fire_data.df$FIRE_SIZE)
+```
+
+Notice that no information about coordinates, time, or size exists for the last four fires. Let's drop them.
+
+```{r}
+fire_data.df <- fire_data.df[!is.na(fire_data.df$DISCOVERY_DATE),]
+```
+
+```{r}
+tail(fire_data.df$DISCOVERY_DATE)
+```
+
+VISUALIZE
+ANNUAL
+```{r}
+library("ggplot2")
+Annual_freq <- data.frame(table(fire_data.df$FIRE_YEAR))
+colnames(Annual_freq) <- c("Year", "Freq")
+
+# Annual_freq.lm <- lm(Freq ~ Year, Annual_freq)
+
+# Annual_freq.lm
+
+plot <-ggplot(data = Annual_freq, aes(x = Year, y = Freq)) +
+      geom_bar(stat="identity")
+#       geom_abline(slope = coef(Annual_freq.lm)[["Year"]], 
+#               intercept = coef(Annual_freq.lm)[["(Intercept)"]])
+print(plot)
+
+Annual_Avg_size <- aggregate(fire_data.df$FIRE_SIZE, by = list(fire_data.df$FIRE_YEAR), FUN = mean)
+colnames(Annual_Avg_size) <- c("Year", "Average_Size")
+plot <-ggplot(data = Annual_Avg_size, aes(x = Year, y = Average_Size)) +
+      geom_bar(stat="identity")
+print(plot)
+
+class_table <- data.frame(table(fire_data.df$FIRE_YEAR, fire_data.df$FIRE_SIZE_CLASS))
+names(class_table) <- c("Year", "Class", "Count")
+plot <- ggplot(data = class_table, aes(x = Year, y = Count, fill = Class)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+cause_table <- data.frame(table(fire_data.df$FIRE_YEAR, fire_data.df$STAT_CAUSE_DESCR))
+names(cause_table) <- c("Year", "Cause", "Count")
+plot <- ggplot(data = cause_table, aes(x = Year, y = Count, fill = Cause)) +
+      geom_bar(stat = "identity", position = "dodge")
+print(plot)
+```
+MONTHLY
+```{r}
+library(ggplot2)
+fire_data.df$MONTH <- month(fire_data.df$DISCOVERY_DATE)
+
+fire_data.df$MONTH <- paste(fire_data.df$FIRE_YEAR, fire_data.df$MONTH, sep = '-')
+
+monthly_freq <- data.frame(table(fire_data.df$MONTH))
+colnames(monthly_freq) <- c("Year_Month", "Freq")
+
+# Annual_freq.lm <- lm(Freq ~ Year, Annual_freq)
+
+# Annual_freq.lm
+
+plot <-ggplot(data = monthly_freq, aes(x = Year_Month, y = Freq)) +
+       geom_bar(stat="identity")
+print(plot)
+
+Monthly_Avg_size <- aggregate(fire_data.df$FIRE_SIZE, by = list(fire_data.df$MONTH), FUN = mean)
+colnames(Monthly_Avg_size) <- c("Year_Month", "Average_Size")
+plot <-ggplot(data = Monthly_Avg_size, aes(x = Year_Month, y = Average_Size)) +
+       geom_bar(stat="identity")
+print(plot)
+
+class_table <- data.frame(table(fire_data.df$MONTH, fire_data.df$FIRE_SIZE_CLASS))
+names(class_table) <- c("Year_Month", "Class", "Count")
+plot <- ggplot(data = class_table, aes(x = Year_Month, y = Count, fill = Class)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+cause_table <- data.frame(table(fire_data.df$MONTH, fire_data.df$STAT_CAUSE_DESCR))
+names(cause_table) <- c("Year_Month", "Cause", "Count")
+plot <- ggplot(data = cause_table, aes(x = Year_Month, y = Count, fill = Cause)) +
+      geom_bar(stat = "identity", position = "dodge")
+print(plot)
+```
+
+```{r}
+filepath <- "/Users/anandkumarpola/Documents/G3/RUTGERS/Stat581/Project/climate_change.csv"
+climate_data.df <- read.csv(filepath)
+```
+
+```{r}
+head(climate_data.df)
+```
+
+```{r}
+tail(climate_data.df)
+```
+
+```{r}
+summary(climate_data.df)
+```
+Visualization
+```{r}
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = Temp)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = MEI)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = CO2)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = CH4)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = N2O)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = CFC.11)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = CFC.12)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = TSI)) +
+      geom_bar(stat = "identity")
+print(plot)
+
+plot <- ggplot(data = climate_data.df, aes(x = paste(Year, Month, sep = '-'), y = Aerosols)) +
+      geom_bar(stat = "identity")
+print(plot)
+```
+Scatterplots
+```{r}
+
+```
+
+```{r}
+cor_mat <- round(cor(climate_data.df[-1:-2]), 2)
+cor_mat
+```
+
+```{r}
+melted_cor_mat <- melt(cor_mat)
+ggplot(data = melted_cor_mat, aes(x = Var1, y = Var2, fill = value)) + geom_tile()
+```
+```{r}
+monthly_fires_data <- cbind(monthly_freq, Monthly_Avg_size$Average_Size)
+colnames(monthly_fires_data) <- c("Year_Month", "Freq", "Average_Size")
+monthly_fires_data[monthly_fires_data$Year_Month %like% "2009", ][1,]
+# joint_data.df <- cbind(climate_data.df, monthly_freq, Monthly_Avg_size$Average_Size)
+```
+The index of the first out-bound-month-year is 205. So, let's drop all rows which satisfy the condition Index >= 205
+
+```{r}
+monthly_fires_data <- monthly_fires_data[1:204, ]
+tail(monthly_fires_data)
+
+```
+
+```{r}
+monthly_climate_data <- cbind(paste(climate_data.df$Year, climate_data.df$Month, sep = "-"), climate_data.df[,-1:-2])
+names(monthly_climate_data)[1] <- c("Year_Month")
+print(monthly_climate_data)
+
+```
+
+
+```{r}
+monthly_climate_data[monthly_climate_data$Year_Month %like% "1992", ][1,]
+
+```
+
+
+Trim all rows up to 104
+```{r}
+monthly_climate_data <- monthly_climate_data[105:nrow(monthly_climate_data), ]
+head(monthly_climate_data)
+
+```
+
+
+```{r}
+head(monthly_fires_data)
+
+```
+
+```{r}
+head(monthly_climate_data)
+
+```
+
+
+```{r}
+monthly_fires_data$ID <- seq(1:nrow(monthly_fires_data))
+```
+
+```{r}
+joint_monthly_data.df <- merge(monthly_climate_data, monthly_fires_data, by = "Year_Month")
+```
+
+```{r}
+joint_monthly_data.df <- joint_monthly_data.df[order(joint_monthly_data.df$ID), ]
+head(joint_monthly_data.df)
+
+```
+```{r}
+rownames(joint_monthly_data.df) <- 1:nrow(joint_monthly_data.df)    # Assign sequence to row names
+joint_monthly_data.df <- joint_monthly_data.df[, 1:12]
+```
+
+```{r}
+head(joint_monthly_data.df)
+
+```
+
+
+Correlation Matrix
+```{r}
+cor_mat <- round(cor(joint_monthly_data.df[-1:-2]), 2)
+cor_mat
+
+```
+
+```{r}
+melted_cor_mat <- melt(cor_mat)
+ggplot(data = melted_cor_mat, aes(x = Var1, y = Var2, fill = value)) + geom_tile()
+
+```
+
+Geometric Plot - Plotting fires locations on a map
+```{r}
+options(warn = -1)
+library(rworldmap)
+worldmap <- getMap(resolution = "coarse")
+plot(worldmap, col = "lightgrey", 
+     fill = T, border = "darkgray",
+     xlim = c(-180, 180), ylim = c(-90, 90),
+     bg = "aliceblue",
+     asp = 1, wrap=c(-180,180))
+
+points(fire_data.df$LONGITUDE, fire_data.df$LATITUDE,
+       col = "red", cex = .01)
+
+
+```
+
+
+Linear Regression - Predicting #fires and average size of wild fire per month based on climatic conditions
+
+```{r}
+nrow(joint_monthly_data.df)
+head(joint_monthly_data.df)
+```
+```{r}
+joint_monthly_data.df[10]
+```
+
+
+We are trying to predict the #fires per month and average size of fire per month based on five independent variables temp, CO2, MEI, CH4, N2O and CFC.11. since these are some important climatic factors that affects wild fires according to our research
+
+We are checking the correlation between them, if the correlation is >0.8 for any two variables, only one among them is enough to include in linear regression
+```{r}
+round(cor(cbind(joint_monthly_data.df$Temp, joint_monthly_data.df$MEI,joint_monthly_data.df$CO2,joint_monthly_data.df$CH4, joint_monthly_data.df$N2O,joint_monthly_data.df$CFC.11)),2)
+```
+
+Since CO2, N2O and CFC.11 are strongly related to each other, we can include only one among. Let's consider only CO2
+Hence we are using multiple linear regression on temp, CO2, MEI and CH4
+
+The rule of thumb in regression is that there must be minimum 10 rows for each independent variable, i.e., in this case we need at least 40 observations for reasonably good prediction results. Our dataset contains 204 observations. Hence we can use this data for prediction.
+
+Taking these columns into another data frame for easy processing
+```{r}
+train_data <- joint_monthly_data.df[,c("Temp","MEI","CO2","CH4","Freq","Average_Size")]
+head(train_data)
+
+```
+```{r}
+
+Temp<-as.data.frame(train_data$Temp)
+head(Temp)
+
+```
+
+
+Scatterplots should be produced for each independent with the dependent so see if the relationship is linear
+```{r}
+pairs(train_data[,1:6],main='Wild fires scatterplots',col = "red",pch=3)
+```
+
+There are mostly no non-linear patterns between any pair of variables, (some do exist and we can see it's affect in the summary of our model)
+
+
+Fitting linear regression to predict freq
+```{r}
+#summary()
+#reg<-lm(train_data$Freq~train_data$Temp+train_data$MEI,train_data$CO2,train_data$CH4)
+reg <- lm(Freq~Temp+MEI+CO2+CH4, data = train_data)
+
+summary(reg)
+```
+
+The last column contains the p-values for each of the independent variables. A p-value < 0.05, provides evidence that the coefficient is different to 0(*** = highly significant). We want it to be far away from zero as this would indicate we could reject the null hypothesis - that is, we could declare a relationship between Freq and independent variable exist. From the summary we can say that "MEI, CO2 & CH4" are all significant in predicting the freq of wildfires per month
+
+The Estimate column in the coefficients table, gives us the coefficients for each independent variable in the regression model. Our model is
+Freq(y) = 144706.00 + 4068.89(Temp) - 1061.09(MEI) + 208.45(CO2) - 121.67(CH4)
+
+The Multiple R-squared value generally increases with the increase in  number of independent variables. Hence it is better to use the adjusted R squared for an understanding of the model. The adjusted R2 indicates that 30.22% increase in the freq of fires per month can be explained by the model containing Temp, MEI, CO2 and CH4.Since 88% of fires are caused by humans, this 30.22% variation is quite high hence  predictions from the regression equation are fairly reliable.
+
+HENCE WE CAN STATE THAT CLIMATIC CONDITIONS DO PLAY A SIGNIFICANT ROLE IN FREQ OF WILD FIRES
+
+Fitting linear regression to predict average size
+```{r}
+reg <- lm(Average_Size~Temp+MEI+CO2+CH4, data = train_data)
+
+summary(reg)
+
+```
+From the summary we can say that "CO2 & CH4" are significant in predicting the average size of wildfires per month.
+
+The Estimate column in the coefficients table, gives us the coefficients for each independent variable in the regression model. Our model is
+Freq(y) = 3083.8709  + 45.7955 (Temp) - 7.0846 (MEI) + 5.6544 (CO2) - -2.8870 (CH4)
+
+The adjusted R2 indicates that 19.69% increase in the average size of wild fires per month can be explained by the model containing Temp, MEI, CO2 and CH4. Since this is not a significant increase we can conclude that climatic conditions do not play a significant role in the variation of average size of the wild fires
+
+
+Regression using Random Forest
+
+Random forest regression predicts output by average by bootstrap algorithm or bagging of independently built decision trees.
+
+Prediction of freq of wildfires per month.
+
+```{r}
+library(randomForest)
+library(caTools)
+library(caret)
+library(e1071)
+```
+
+There are lot of combination possible between the parameters. Without trying all of them we can use Grid Search in R. With grid search the model will be evaluated over all the combination you pass in the function, using cross-validation.
+```{r}
+trControl <- trainControl(method = "cv",
+    number = 10,
+    search = "grid")
+```
+
+We take the independent variables and the predicting variable, Freq in this case into a dataframe. And divide it into 75% - train data and 25% test data. 
+```{r}
+
+
+rf_data <- train_data[1:5]
+#head(rf_data)
+
+sample <- sample.int(n = nrow(rf_data),size = floor(.75*nrow(rf_data)),replace = F)
+train <- rf_data[sample,]
+test <- rf_data[-sample,]
+
+rf <- randomForest(train$Freq~. ,data=train, importance = T, trControl = trControl)
+print(rf)
+plot(rf)
+```
+
+We can see that our random forest model is 22.83% accurate
+
+we can use the varImpPlot() function to create a plot that displays the importance of each predictor variable in the final model:
+```{r}
+varImpPlot(rf)
+```
+The x-axis displays the average increase in node purity and increase in mean squared error of the regression trees based on splitting on the various predictors displayed on the y-axis.
+
+We can see MEI is the most important predictor variable and Temp is the least
+
+
+
+Predicting using test data
+```{r}
+predictions <- predict(rf,test[-5])
+labels <- test$Freq
+
+freq_values <- data.frame(actual=labels, predicted = predictions)
+freq_values
+
+```
+Mean Squared Error on test data is
+```{r}
+mean((freq_values$actual - freq_values$predicted)^2)
+```
+
+Prediction of average fire size per month.
+```{r}
+
+
+rf_data <- train_data[-5]
+#head(rf_data)
+
+sample <- sample.int(n = nrow(rf_data),size = floor(.75*nrow(rf_data)),replace = F)
+train <- rf_data[sample,]
+test <- rf_data[-sample,]
+
+rf <- randomForest(train$Average_Size~. ,data=train, importance = T, trControl = trControl)
+print(rf)
+plot(rf)
+```
+
+WE can see that the model is 26.41% accurate
+
+```{r}
+varImpPlot(rf)
+```
+
+Here CH4 is most important and MEI is least important
+Predicting using test data
+```{r}
+predictions <- predict(rf,test[-5])
+labels <- test$Average_Size
+
+size_values <- data.frame(actual=labels, predicted = predictions)
+size_values
+
+```
+Mean Squared Error on test data is
+```{r}
+mean((size_values$actual - size_values$predicted)^2)
+```
+
+Hence we can say linear regression is succesful in predicting the regression values rather than decision trees and random forest in ur case
