@@ -1,0 +1,528 @@
+---
+title: "Exploratory Analysis of Hurricane Data Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+CHECK PRESENT WORKING DIRECTORY
+```{r}
+print(getwd())
+```
+
+IMPORT PACKAGES
+```{r}
+library(MASS) # Using fitdistr to fit distributions to data
+library(ggplot2) # For plotting scatterplots, line plots, and bar graphs
+# library(fitdistrplus) # Using fitdist to fit distributions to data
+library(reshape2) # Used to melt correlation matrix
+library(dplyr, warn.conflicts = FALSE) # Using %>% to filter data between range
+# library(psych) # Using describe() method
+```
+
+
+READ DATASET INTO A DATAFRAME OBJECT
+```{r}
+data <- read.csv('data/hurricane_data.csv')
+```
+
+CHECK THE FIRST FEW RECORDS OF THE DATA
+```{r}
+head(data)
+```
+
+CHANGING NAMES OF COLUMNS IN THE DATAFRAME
+```{r}
+colnames(data) <- c("Name", "Year", "Max_sustained_winds", "Min_pressure")
+colnames(data)
+```
+
+CHECK THE FIRST FEW RECORDS OF THE DATA
+```{r}
+head(data)
+```
+
+CHECK THE LAST FEW RECORDS OF THE DATA
+```{r}
+tail(data)
+```
+
+DESCRIBE DATA
+```{r}
+summary(data)
+```
+
+CHECKING RANGE OF YEARS IN DATASET
+```{r}
+range(data$Year)[2] - range(data$Year)[1]
+```
+
+COMPUTE ANNUAL FREQUENCY OF HURRICANES
+
+```{r}
+Annual_freq <- data.frame(table(data$Year))
+colnames(Annual_freq) <- c("Year", "Freq")
+Annual_freq
+```
+
+APPEND ANNUAL FREQUENCY OF HURRICANE TO DATA
+```{r}
+Year_freq_vec <- vector(length = length(data))
+i <- 1
+for (year in data$Year) {
+  f <- 0
+  for (yr in Annual_freq$Year) {
+    if (yr == year) {
+      f <- Annual_freq$Freq[Annual_freq$Year == yr]
+      break
+    }
+  }
+  Year_freq_vec[i] <- f
+  i <- i + 1
+}
+
+Year_freq_vec
+
+data <- cbind(data, Year_freq_vec)
+head(data)
+
+colnames(data)[5] <- c("Freq")
+head(data)
+```
+
+COMPUTE DECADES
+```{r}
+"---------------Decades---------------------------"
+decade <- ifelse (data$Year %% 10 == 0, decade <- data$Year - 9, decade <- (data$Year %/% 10) * 10 + 1)
+decade
+"----------------Years------------------------"
+as.numeric(as.character(data$Year))
+"---------------------------------------------"
+```
+
+APPEND DECADE TO DATAFRAME
+```{r}
+data <- cbind(data, decade)
+data
+```
+
+COMPUTE DECADAL FREQUENCY
+```{r}
+decadal_freq <- data.frame(table(data$decade))
+colnames(decadal_freq) <- c("Decade", "Freq")
+decadal_freq
+```
+
+APPEND DECADAL FREQUENCY TO DATAFRAME
+```{r}
+Dec_freq_vec <- vector(length = length(data))
+i <- 1
+for (decade in data$decade) {
+  f <- 0
+  for (dec in decadal_freq$Decade) {
+    if (dec == decade) {
+      f <- decadal_freq$Freq[decadal_freq$Decade == dec]
+      break
+    }
+  }
+  Dec_freq_vec[i] <- f
+  i <- i + 1
+}
+
+Dec_freq_vec
+
+data <- cbind(data, Dec_freq_vec)
+head(data)
+
+colnames(data)[7] <- c("Dec_Freq")
+head(data)
+```
+
+DATA VISUALIZATION
+
+PLOTTING FREQUENCY OF HURRICANES
+
+```{r}
+barplot(height = data$Freq, width = 10, names.arg = data$Year,
+        ylim = c(0, 6), xpd = FALSE,
+        main = "Annual Frequency of Hurricanes", xlab = "Year", ylab = "No. of Hurricanes")
+
+no_of_intervals <- (2030-1851) / 10
+
+hist(data$Year, breaks = no_of_intervals, main = "Decadal Frequency of Hurricanes", xlab = "Year", ylab = "No. of Hurricanes", xaxt = 'n')
+axis(side=1, at=seq(1851, 2040, 10), labels=seq(1851, 2040, 10))
+```
+
+CHECKING MAX_SUSTAINED_WINDS OF EACH HURRICANE
+
+```{r}
+barplot(height = data$Max_sustained_winds, width = 10,
+        ylim = c(200, 320), xpd = FALSE,
+        main = "Max Sustained Winds of Each Hurricane", xlab = "Hurricanes", ylab = "Max Sustained Winds")
+```
+
+CHECKING MIN_PRESSURE OF EACH HURRICANE
+```{r}
+barplot(height = data$Min_pressure, width = 10,
+        ylim = c(870, 990), xpd = FALSE,
+        main = "Min Pressure of Each Hurricane", xlab = "Hurricanes", ylab = "Min Pressure")
+```
+
+CHECKING SCATTERPLOTS OF TIME AND MAX_SUSTAINED_WINDS
+```{r}
+# Year
+ggplot(data, aes(x = Year, y = Max_sustained_winds)) + xlim(c(1851, 2050)) + ylim(c(200, 320)) + geom_point(fill = "red", size = 2, shape = 21) + ggtitle("Max Sustained Winds vs. Year") + xlab("Year") + ylab("Max Sustained Winds")
+
+# Decade
+ggplot(data, aes(x = decade, y = Max_sustained_winds)) + xlim(c(1851, 2050)) + ylim(c(200, 320)) + geom_point(fill = "red", size = 2, shape = 21) + ggtitle("Max Sustained Winds vs. Decade") + xlab("Decade") + ylab("Max Sustained Winds")
+```
+CHECKING SCATTERPLOTS OF TIME AND MIN_PRESSURE
+```{r}
+# Year
+ggplot(data, aes(x = Year, y = Min_pressure)) + ylim(850, 1000) + xlim(1851, 2050) + geom_point(fill = "blue", size = 2, shape = 22) + ggtitle("Min Pressure vs. Year") + xlab("Year") + ylab("Min Pressure")
+
+# Decade
+ggplot(data, aes(x = decade, y = Min_pressure)) + ylim(850, 1000) + xlim(1851, 2050) + geom_point(fill = "blue", size = 2, shape = 22) + ggtitle("Min Pressure vs. Decade") + xlab("Decade") + ylab("Min Pressure")
+```
+
+CHECKING SCATTERPLOT OF MAX SUSTAINED WINDS AND MIN PRESSURE
+
+```{r}
+ggplot(data, aes(x = Max_sustained_winds, y = Min_pressure)) + ylim(850, 1000) + xlim(200, 320) + geom_point(fill = "green", size = 2, shape = 23) + ggtitle("Max Sustained Winds vs. Min Pressure") + xlab("Max Sustained Winds") + ylab("Min Pressure")
+```
+
+CHECKING SCATTERPLOT OF FREQUENCY AND MAX SUSTAINED WINDS
+```{r}
+# Annual Frequency
+ggplot(data, aes(x = Freq, y = Max_sustained_winds)) + xlim(0, 6) + ylim(200, 320) + geom_point(fill = "purple", size = 2, shape = 24) + ggtitle("Max Sustained Winds vs. Annual Frequency") + ylab("Max Sustained Winds") + xlab("Annual Frequency")
+
+# Decadal Frequency
+ggplot(data, aes(x = Dec_Freq, y = Max_sustained_winds)) + xlim(0, 25) + ylim(200, 320) + geom_point(fill = "purple", size = 2, shape = 24) + ggtitle("Max Sustained Winds vs. Decadal Frequency") + ylab("Max Sustained Winds") + xlab("Decadal Frequency")
+```
+
+CHECKING SCATTERPLOT OF FREQUENCY AND MIN PRESSURE
+```{r}
+# For Annual Frequency
+ggplot(data, aes(x = Freq, y = Max_sustained_winds)) + xlim(0, 6) + ylim(200, 320) + geom_point(fill = "purple", size = 2, shape = 24) + ggtitle("Max Sustained Winds vs. Annual Frequency") + ylab("Max Sustained Winds") + xlab("Annual Frequency")
+
+# For Decadal Frequency
+ggplot(data, aes(x = Dec_Freq, y = Max_sustained_winds)) + xlim(0, 25) + ylim(200, 320) + geom_point(fill = "purple", size = 2, shape = 24) + ggtitle("Max Sustained Winds vs. Decadal Frequency") + ylab("Max Sustained Winds") + xlab("Decadal Frequency")
+```
+
+CHECKING CORRELATION MATRIX OF NUMERICAL DATA
+
+```{r}
+cor_mat <- round(cor(data[-1]),2)
+cor_mat
+```
+
+DRAWING HEATMAP OF CORRELATION MATRIX
+```{r}
+melted_cor_mat <- melt(cor_mat)
+
+ggplot(data = melted_cor_mat, aes(x=Var1, y=Var2, fill=value)) + geom_tile()
+```
+
+FITTING TO DISTRIBUTION
+
+COLLECT EMPIRICAL VALUES OF FREQUENCY DISTRIBUTION FROM GIVEN DATASET
+
+COMPUTE ANNUAL HURRICANE FREQUENCY DISTRIBUTION, that is, ANNUAL EMPIRICAL VALUES
+```{r}
+All_years <- seq(1851, 2030)
+All_years
+```
+
+```{r}
+annual_empirical_values <- vector(length = length(All_years))
+i <- 1
+for (year in All_years) {
+  f <- 0
+  for (yr in Annual_freq$Year) {
+    if (yr == year) {
+      f <- Annual_freq$Freq[Annual_freq$Year == yr]
+      break
+    }
+  }
+  annual_empirical_values[i] <- f
+  i <- i + 1
+}
+
+annual_empirical_values
+```
+
+COLLECT DECADAL HURRICANE FREQUENCY DISTRIBUTION, that is, DECADAL EMPIRICAL VALUES
+```{r}
+decadal_empirical_values <- decadal_freq$Freq
+decadal_empirical_values
+```
+
+COMPUTE FIT TO NORMAL DISTRIBUTION
+```{r}
+normal.fit.annual <- fitdistr(annual_empirical_values, "normal")
+"---------Normal Fit to Annual Empirical Values--------------"
+normal.fit.annual
+
+normal.fit.decadal <-fitdistr(decadal_empirical_values, "normal")
+"---------Normal Fit to Decadal Empirical Values--------------"
+normal.fit.decadal
+```
+
+COMPUTE THEORETICAL NORMAL QUANTILES
+```{r}
+theoretical_normal_quantiles.annual <- rnorm(n = 180, mean = normal.fit.annual$estimate[1], sd = normal.fit.annual$estimate[2])
+"---------------Theoretical Normal Quantiles (Annual)-----------------------------------"
+theoretical_normal_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_normal_quantiles.decadal <- rnorm(n = 18, mean = normal.fit.decadal$estimate[1], sd = normal.fit.decadal$estimate[2])
+"---------------Theoretical Normal Quantiles (Decadal)-----------------------------------"
+theoretical_normal_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_normal_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_normal_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO NEGATIVE BINOMIAL DISTRIBUTION
+```{r}
+negbinomial.fit.annual <- fitdistr(annual_empirical_values, "negative binomial")
+"---------Negative Binomial Fit to Annual Empirical Values--------------"
+negbinomial.fit.annual
+
+negbinomial.fit.decadal <- fitdistr(decadal_empirical_values, "negative binomial")
+"---------Negative Binomial Fit to Decadal Empirical Values--------------"
+negbinomial.fit.decadal
+```
+
+COMPUTE THEORETICAL NEGATIVE BINOMIAL QUANTILES
+```{r}
+theoretical_negbinomial_quantiles.annual <- rnbinom(n = 180, size = negbinomial.fit.annual$estimate[1], mu = negbinomial.fit.annual$estimate[2])
+"---------------Theoretical Negative Binomial Quantiles (Annual)-----------------------------------"
+theoretical_negbinomial_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_negbinomial_quantiles.decadal <- rnbinom(n = 18, size = negbinomial.fit.decadal$estimate[1], mu = negbinomial.fit.decadal$estimate[2])
+"---------------Theoretical Negative Binomial Quantiles (Decadal)-----------------------------------"
+theoretical_negbinomial_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_negbinomial_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_negbinomial_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO GEOMETRIC DISTRIBUTION
+```{r}
+geometric.fit.annual <- fitdistr(annual_empirical_values, "geometric")
+"---------Geometric Fit to Annual Empirical Values--------------"
+geometric.fit.annual
+
+geometric.fit.decadal <- fitdistr(decadal_empirical_values, "geometric")
+"---------Geometric Fit to Decadal Empirical Values--------------"
+geometric.fit.decadal
+```
+
+COMPUTE THEORETICAL GEOMETRIC QUANTILES
+```{r}
+theoretical_geometric_quantiles.annual <- rgeom(n = 180, prob = geometric.fit.annual$estimate)
+"---------------Theoretical Geometric Quantiles (Annual)-----------------------------------"
+theoretical_geometric_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_geometric_quantiles.decadal <- rgeom(n = 18, prob = geometric.fit.decadal$estimate)
+"---------------Theoretical Geometric Quantiles (Decadal)-----------------------------------"
+theoretical_geometric_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_geometric_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_geometric_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO POISSON DISTRIBUTION
+```{r}
+poisson.fit.annual <- fitdistr(annual_empirical_values, "poisson")
+"---------Poisson Fit to Annual Empirical Values--------------"
+poisson.fit.annual
+
+poisson.fit.decadal <- fitdistr(decadal_empirical_values, "poisson")
+"---------Poisson Fit to Decadal Empirical Values--------------"
+poisson.fit.decadal
+```
+
+COMPUTE THEORETICAL POISSON QUANTILES
+```{r}
+theoretical_poisson_quantiles.annual <- rpois(n = 180, lambda = poisson.fit.annual$estimate)
+"---------------Theoretical Poisson Quantiles (Annual)-----------------------------------"
+theoretical_poisson_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_poisson_quantiles.decadal <- rpois(n = 18, lambda = poisson.fit.decadal$estimate)
+"---------------Theoretical Poisson Quantiles (Decadal)-----------------------------------"
+theoretical_poisson_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_poisson_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_poisson_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO EXPONENTIAL DISTRIBUTION
+```{r}
+exponential.fit.annual <- fitdistr(annual_empirical_values, "exponential")
+"---------Exponential Fit to Annual Empirical Values--------------"
+exponential.fit.annual
+
+exponential.fit.decadal <- fitdistr(decadal_empirical_values, "exponential")
+"---------Exponential Fit to Decadal Empirical Values--------------"
+exponential.fit.decadal
+```
+
+COMPUTE THEORETICAL EXPONENTIAL QUANTILES
+```{r}
+theoretical_exponential_quantiles.annual <- rexp(n = 180, rate = exponential.fit.annual$estimate)
+"---------------Theoretical Exponential Quantiles (Annual)-----------------------------------"
+theoretical_exponential_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_exponential_quantiles.decadal <- rexp(n = 18, rate = exponential.fit.decadal$estimate)
+"---------------Theoretical Exponential Quantiles (Decadal)-----------------------------------"
+theoretical_exponential_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_exponential_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_exponential_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO CAUCHY DISTRIBUTION
+```{r}
+cauchy.fit.annual <- fitdistr(annual_empirical_values, "cauchy")
+"---------Cauchy Fit to Annual Empirical Values--------------"
+cauchy.fit.annual
+
+cauchy.fit.decadal <- fitdistr(decadal_empirical_values, "cauchy")
+"---------Cauchy Fit to Decadal Empirical Values--------------"
+cauchy.fit.decadal
+```
+
+COMPUTE THEORETICAL CAUCHY QUANTILES
+```{r}
+theoretical_cauchy_quantiles.annual <- rcauchy(n = 180, location = cauchy.fit.annual$estimate[1], scale = cauchy.fit.annual$estimate[2])
+"---------------Theoretical Cauchy Quantiles (Annual)-----------------------------------"
+theoretical_cauchy_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_cauchy_quantiles.decadal <- rcauchy(n = 18, location = cauchy.fit.decadal$estimate[1], scale = cauchy.fit.decadal$estimate[2])
+"---------------Theoretical Cauchy Quantiles (Decadal)-----------------------------------"
+theoretical_cauchy_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_cauchy_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_cauchy_quantiles.decadal, decadal_empirical_values)
+```
+
+COMPUTE FIT TO LOGISTIC DISTRIBUTION
+```{r}
+logistic.fit.annual <- fitdistr(annual_empirical_values, "logistic")
+"---------Logistic Fit to Annual Empirical Values--------------"
+logistic.fit.annual
+
+logistic.fit.decadal <- fitdistr(decadal_empirical_values, "logistic")
+"---------Logistic Fit to Decadal Empirical Values--------------"
+logistic.fit.decadal
+```
+
+COMPUTE THEORETICAL LOGISTIC QUANTILES
+```{r}
+theoretical_logistic_quantiles.annual <- rlogis(n = 180, location = logistic.fit.annual$estimate[1], scale = logistic.fit.annual$estimate[2])
+"---------------Theoretical Logistic Quantiles (Annual)-----------------------------------"
+theoretical_logistic_quantiles.annual
+
+"-----------------------------------------------------------------------------------------"
+
+theoretical_logistic_quantiles.decadal <- rlogis(n = 18, location = logistic.fit.decadal$estimate[1], scale = logistic.fit.decadal$estimate[2])
+"---------------Theoretical Logistic Quantiles (Decadal)-----------------------------------"
+theoretical_logistic_quantiles.decadal
+```
+
+PLOT QUANTILE-QUANTILE PLOT FOR EMPIRICAL VALUES AND THEORETICAL VALUES
+```{r}
+# Annual
+qqplot(theoretical_logistic_quantiles.annual, annual_empirical_values)
+
+# Decadal
+qqplot(theoretical_logistic_quantiles.decadal, decadal_empirical_values)
+```
+
+PERFORM AMO ANALYSIS
+
+READ AMO DATA
+```{r}
+amo_monthly_data <- read.csv("data/amo_monthly_data.csv")
+head(amo_monthly_data)
+```
+
+COMPUTE AVERAGE ANNUAL AMO DEPARTURES
+```{r}
+amo_annual_data <- data.frame(cbind(Years = amo_monthly_data[,1], Means = rowMeans(amo_monthly_data[,-1])))
+head(amo_annual_data)
+
+colnames(amo_annual_data) <- c("Years", "Avg_Annual_AMO_Departure")
+head(amo_annual_data)
+```
+
+PLOT AMO GRAPH ALONGSIDE ANNUAL AND DECADAL HURRICANE FREQUENCY DISTRIBUTIONS
+```{r}
+# Plotting AMO Graph
+ggplot(data.frame(amo_annual_data) %>% filter(between(amo_annual_data$Years, 1851, 2015)), aes(x=Years, y=Avg_Annual_AMO_Departure)) + geom_line() + ylim(-0.25, 0.25)
+# Plotting Annual Frequency Distribution
+hist(data$Year, breaks = length(annual_empirical_values), main = "Annual Frequency of Hurricanes", xlab = "Year", ylab = "No. of Hurricanes", xaxt = 'n')
+axis(side=1, at=seq(1851, 2030, 1), labels=seq(1851, 2030, 1))
+
+# Plotting Decadal Frequency Distribution
+hist(data$decade, breaks = length(decadal_empirical_values), main = "Decadal Frequency of Hurricanes", xlab = "Year", ylab = "No. of Hurricanes", xaxt = 'n')
+axis(side=1, at=seq(1851, 2030, 10), labels=seq(1851, 2030, 10))
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
